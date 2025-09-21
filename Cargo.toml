@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["akumaru <akumaru.senju@gmail.com>"]
 description = "xifetch is a neofetch alternative written in Rust."
 keywords = ["cli", "xifetch", "neofetch"]
-repository = "https://github.com/user6879/xifetch-rs"
+repository = "https://github.com/ae5259/xifetch-rs"
 license="MIT"
 readme="README.md"
 
