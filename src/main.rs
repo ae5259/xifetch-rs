@@ -10,55 +10,75 @@ fn main() {
     println!("{}", fetch);
 }
 
-fn get_os_name() -> Option<String> {
-    let output = Command::new("uname").arg("-o").output().ok()?;
-    Some(String::from_utf8(output.stdout).ok()?.trim().to_string())
+fn execute_command(command: &str, arg: Option<&str>) -> String {
+    let mut command = &mut Command::new(command);
+
+    if arg.is_some() {
+        command = command.arg(arg.unwrap());
+    }
+
+    match command.output() {
+        Ok(result) => {
+            if result.status.success() {
+                return String::from_utf8_lossy(&result.stdout).trim().to_string();
+            } else {
+                return format!(
+                    "Command failed (status: {:?}): {}",
+                    result.status,
+                    String::from_utf8_lossy(&result.stderr)
+                );
+            }
+        }
+
+        Err(err) => format!("Failed to execute command: {}", err),
+    }
 }
 
-fn get_kernel_version() -> Option<String> {
-    let output = Command::new("uname").arg("-r").output().ok()?;
-    Some(String::from_utf8(output.stdout).ok()?.trim().to_string())
+fn get_os_name() -> String {
+    execute_command("uname", Some("-o"))
 }
 
-fn get_host_name() -> Option<String> {
-    let output = Command::new("hostname").output().ok()?;
-    Some(String::from_utf8(output.stdout).ok()?.trim().to_string())
+fn get_host_name() -> String {
+    execute_command("hostname", None)
 }
 
-fn get_uptime() -> Option<String> {
-    let output = Command::new("uptime").output().ok()?;
+fn get_kernel_version() -> String {
+    execute_command("uname", Some("-r"))
+}
 
-    let stdout = String::from_utf8(output.stdout).ok()?;
-    if let Some(up_index) = stdout.find("up") {
-        let time_str = &stdout[up_index + 3..];
+fn get_uptime() -> String {
+    let output = execute_command("uptime", None);
+
+    if let Some(up_index) = output.find("up") {
+        let time_str = &output[up_index + 3..];
 
         if let Some(comma_index) = time_str.find(',') {
             let extracted_time = &time_str[..comma_index];
             let trimmed_time = extracted_time.trim();
 
-            return Some(trimmed_time.to_string());
+            return trimmed_time.to_string();
+        } else {
+            String::from("XZ BRO")
         }
+    } else {
+        String::from("XZ BRO")
     }
-
-    None
 }
 
 fn get_cpu_info() -> Option<String> {
-    let output = Command::new("lscpu").output().ok()?;
-    let cpu_info_str = String::from_utf8(output.stdout).ok()?;
-    let model_name_line = cpu_info_str
-        .lines()
-        .find(|line| line.contains("Model name"))?;
+    let output = execute_command("lscpu", None);
+
+    let model_name_line = output.lines().find(|line| line.contains("Model name"))?;
     let model_name = model_name_line.split(':').nth(1)?.trim();
-    let cpu_cores_line = cpu_info_str.lines().find(|line| line.contains("CPU(s)"))?;
+    let cpu_cores_line = output.lines().find(|line| line.contains("CPU(s)"))?;
     let cpu_cores = cpu_cores_line.split(':').nth(1)?.trim();
     Some(format!("{} ({} cores)", model_name, cpu_cores))
 }
 
 fn get_memory_info() -> Option<String> {
-    let output = Command::new("free").arg("-h").output().ok()?;
-    let memory_info_str = String::from_utf8(output.stdout).ok()?;
-    let lines: Vec<&str> = memory_info_str.lines().collect();
+    let output = execute_command("free", Some("-h"));
+
+    let lines: Vec<&str> = output.lines().collect();
     let mem_line = lines.iter().find(|line| line.contains("Mem:"))?;
     let mem_parts: Vec<&str> = mem_line.split_whitespace().collect();
     let total_mem = mem_parts[1];
@@ -67,23 +87,21 @@ fn get_memory_info() -> Option<String> {
 }
 
 fn print_fetch() -> String {
-    let os_name = get_os_name().unwrap_or_else(|| "Unknown".to_string());
-    let kernel_version = get_kernel_version().unwrap_or_else(|| "Unknown".to_string());
-    let host_name = get_host_name().unwrap_or_else(|| "Unknown".to_string());
-    let uptime = get_uptime().unwrap_or_else(|| "Unknown".to_string());
-    let cpu_info = get_cpu_info().unwrap_or_else(|| "Unknown".to_string());
-    let memory_info = get_memory_info().unwrap_or_else(|| "Unknown".to_string());
-    let shell_name = std::env::var("SHELL").unwrap_or_else(|_| "Unknown".to_string());
+    let os_name = get_os_name();
+    let host_name = get_host_name();
+    let kernel_version = get_kernel_version();
+    let uptime = get_uptime();
+    let cpu = get_cpu_info();
+    let memory = get_memory_info();
 
     let mut result: String = String::new();
 
     result.push_str(format!("OS: {}\n", os_name).as_str());
-    result.push_str(format!("Shell: {}\n", shell_name).as_str());
-    result.push_str(format!("Kernel: {}\n", kernel_version).as_str());
     result.push_str(format!("Host: {}\n", host_name).as_str());
+    result.push_str(format!("Kernel: {}\n", kernel_version).as_str());
     result.push_str(format!("Uptime: {}\n", uptime).as_str());
-    result.push_str(format!("CPU: {}\n", cpu_info).as_str());
-    result.push_str(format!("Memory: {}\n", memory_info).as_str());
+    result.push_str(format!("CPU: {}\n", cpu.unwrap()).as_str());
+    result.push_str(format!("Memory: {}\n", memory.unwrap()).as_str());
 
     result
 }
