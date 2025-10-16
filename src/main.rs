@@ -48,21 +48,19 @@ fn get_kernel_version() -> String {
 
 fn get_uptime() -> String {
     let output = execute_command("uptime", None);
+    let Some(up_index) = output.find("up") else {
+        return String::from("XZ BRO");
+    };
 
-    if let Some(up_index) = output.find("up") {
-        let time_str = &output[up_index + 3..];
+    let time_str = &output[up_index + 3..];
+    let Some(comma_index) = time_str.find(',') else {
+        return String::from("XZ BRO");
+    };
 
-        if let Some(comma_index) = time_str.find(',') {
-            let extracted_time = &time_str[..comma_index];
-            let trimmed_time = extracted_time.trim();
+    let extracted_time = &time_str[..comma_index];
+    let trimmed_time = extracted_time.trim();
 
-            return trimmed_time.to_string();
-        } else {
-            String::from("XZ BRO")
-        }
-    } else {
-        String::from("XZ BRO")
-    }
+    return trimmed_time.to_string();
 }
 
 fn get_cpu_info() -> Option<String> {
