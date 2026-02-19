@@ -5,6 +5,10 @@ fn get_color() -> String {
     let file_path = format!(
         "/home/{}/.config/.xonfig",
         std::env::var("LOGNAME").unwrap_or(".config".to_owned())
+
+
+
+
     );
 
     let contents =
